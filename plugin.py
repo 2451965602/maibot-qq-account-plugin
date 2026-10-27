@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 from typing import Any, ClassVar
 
 from maibot_sdk import MaiBotPlugin, PluginConfigBase, Tool
@@ -23,6 +24,7 @@ class AccountSettings(PluginConfigBase):
         default="",
         description="允许修改机器人 QQ 账号资料的主人 QQ 号；为空时所有修改操作均拒绝。",
     )
+    approval_code: str = Field(default="", description="账号变更审批口令；为空时拒绝全部变更")
 
 
 class QQAccountConfig(PluginConfigBase):
@@ -50,17 +52,9 @@ class QQAccountPlugin(MaiBotPlugin):
         if scope == "self":
             self.set_plugin_config(config_data)
 
-    @staticmethod
-    def _caller_id(kwargs: dict[str, Any]) -> str:
-        for key in ("user_id", "sender_id", "trigger_user_id", "qq_user_id"):
-            value = kwargs.get(key)
-            if value is not None and str(value).strip():
-                return str(value).strip()
-        return ""
-
     def _is_owner(self, kwargs: dict[str, Any]) -> bool:
-        configured = str(self.config.account.owner_qq or "").strip()
-        return bool(configured and self._caller_id(kwargs) == configured)
+        configured = str(self.config.account.approval_code or "")
+        return bool(configured and hmac.compare_digest(configured, str(kwargs.get("approval_code") or "")))
 
     async def _call_action(self, action_name: str, params: dict[str, Any]) -> dict[str, Any]:
         """Call SnowLuma through its public adapter API, never via a raw socket."""
@@ -81,8 +75,8 @@ class QQAccountPlugin(MaiBotPlugin):
     def _owner_error(self, kwargs: dict[str, Any]) -> dict[str, Any] | None:
         if self._is_owner(kwargs):
             return None
-        if not str(self.config.account.owner_qq or "").strip():
-            return {"success": False, "error": "未配置 owner_qq，已拒绝账号修改"}
+        if not str(self.config.account.approval_code or ""):
+            return {"success": False, "error": "未配置账号变更审批口令，已拒绝操作"}
         return {"success": False, "error": "此 QQ 账号修改工具仅允许主人调用"}
 
     @Tool(
