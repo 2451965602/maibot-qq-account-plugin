@@ -27,6 +27,15 @@ class QQAccountPlugin(MaiBotPlugin):
         """Required MaiBot lifecycle hook; tools are registered by decorators."""
         self.ctx.logger.info("QQ 账号工具已加载")
 
+    async def on_unload(self) -> None:
+        """Required MaiBot lifecycle hook; this plugin has no background tasks."""
+        self.ctx.logger.info("QQ 账号工具已卸载")
+
+    async def on_config_update(self, scope: str, config_data: dict[str, Any], version: str) -> None:
+        """Apply WebUI changes to this plugin's own configuration."""
+        if scope == "self":
+            self.set_plugin_config(config_data)
+
     @staticmethod
     def _caller_id(kwargs: dict[str, Any]) -> str:
         for key in ("user_id", "sender_id", "trigger_user_id", "qq_user_id"):
