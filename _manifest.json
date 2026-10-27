@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "id": "fjyxyz.qq-account",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "name": "QQ 账号管理",
   "description": "通过 SnowLuma 管理机器人自身 QQ 资料、在线状态与 QQ 空间黑名单，仅允许主人调用。",
   "author": {"name": "fjyxyz", "url": "https://github.com/2451965602"},

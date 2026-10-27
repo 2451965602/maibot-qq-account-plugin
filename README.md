@@ -11,14 +11,19 @@
 
 ## 安装与配置
 
-从 MaiBot 插件市场安装，或将仓库目录复制至 MaiBot 的 `plugins/`。在 `config.toml` 设置：
+从 MaiBot 插件市场安装，或将仓库目录复制至 MaiBot 的 `plugins/`。通过 MaiBot 运行时配置或 WebUI 设置：
 
 ```toml
 [account]
 owner_qq = "你的 QQ 号"
+approval_code = "你自己的审批口令"
 ```
 
-重启 Core 后生效。未配置 `owner_qq` 时，所有账号修改都会拒绝。
+重启 Core 后生效。未配置 `approval_code` 时，所有账号修改都会拒绝；工具参数中缺失口令或口令不匹配同样拒绝。
+
+- 请勿把真实 `approval_code` 提交到版本库，也不要在聊天、截图或日志中展示；`config.toml` 已在 `.gitignore` 中忽略。
+- 审批口令只在用户明确提出修改要求时由调用方通过工具参数 `approval_code` 传入，插件不会把它写入日志或返回结果。
+- `owner_qq` 仅作记录用途，不构成授权依据；能否变更账号只取决于 `approval_code` 校验是否通过。
 
 ## 使用
 
@@ -27,5 +32,6 @@ owner_qq = "你的 QQ 号"
 ## 安全边界
 
 - 只调用 SnowLuma 适配器公开的 `adapter.snowluma.action.call`；不建立第二条 QQ 连接。
+- 审批口令使用 `hmac.compare_digest` 常量时间比较，且不写入日志、错误信息或工具结果。
 - 头像仅接受 HTTPS URL，拒绝服务器本地文件路径。
 - 不提供导入 QQ 收藏表情功能：当前适配器没有可安全验证的等价收藏 API。
