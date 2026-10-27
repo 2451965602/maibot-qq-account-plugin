@@ -23,6 +23,10 @@ class QQAccountPlugin(MaiBotPlugin):
 
     config_model: ClassVar[type[PluginConfigBase] | None] = QQAccountConfig
 
+    async def on_load(self) -> None:
+        """Required MaiBot lifecycle hook; tools are registered by decorators."""
+        self.ctx.logger.info("QQ 账号工具已加载")
+
     @staticmethod
     def _caller_id(kwargs: dict[str, Any]) -> str:
         for key in ("user_id", "sender_id", "trigger_user_id", "qq_user_id"):
