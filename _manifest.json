@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "id": "fjyxyz.qq-account",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": "QQ 账号管理",
   "description": "通过 SnowLuma 管理机器人自身 QQ 资料、在线状态与 QQ 空间黑名单，仅允许主人调用。",
   "author": {"name": "fjyxyz", "url": "https://github.com/2451965602"},
@@ -16,6 +16,6 @@
   "host_application": {"min_version": "1.3.0", "max_version": "1.3.99"},
   "sdk": {"min_version": "2.5.0", "max_version": "2.16.99"},
   "dependencies": [],
-  "capabilities": ["api.call", "config.get"],
+  "capabilities": ["api.call", "chat.get_stream_by_user_id"],
   "i18n": {"default_locale": "zh-CN", "supported_locales": ["zh-CN"]}
 }
