@@ -9,13 +9,27 @@ from maibot_sdk.types import ToolParameterInfo, ToolParamType
 from pydantic import Field
 
 
-class QQAccountConfig(PluginConfigBase):
-    """Plugin settings shown in MaiBot WebUI."""
+class PluginSectionConfig(PluginConfigBase):
+    """MaiBot's mandatory versioned plugin section."""
+
+    enabled: bool = Field(default=True, description="是否启用 QQ 账号工具")
+    config_version: str = Field(default="1.0.0", description="插件配置版本")
+
+
+class AccountSettings(PluginConfigBase):
+    """Owner identity for self-account mutations."""
 
     owner_qq: str = Field(
         default="",
         description="允许修改机器人 QQ 账号资料的主人 QQ 号；为空时所有修改操作均拒绝。",
     )
+
+
+class QQAccountConfig(PluginConfigBase):
+    """Plugin settings shown in MaiBot WebUI."""
+
+    plugin: PluginSectionConfig = Field(default_factory=PluginSectionConfig)
+    account: AccountSettings = Field(default_factory=AccountSettings)
 
 
 class QQAccountPlugin(MaiBotPlugin):
@@ -45,7 +59,7 @@ class QQAccountPlugin(MaiBotPlugin):
         return ""
 
     def _is_owner(self, kwargs: dict[str, Any]) -> bool:
-        configured = str(self.config.owner_qq or "").strip()
+        configured = str(self.config.account.owner_qq or "").strip()
         return bool(configured and self._caller_id(kwargs) == configured)
 
     async def _call_action(self, action_name: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -67,7 +81,7 @@ class QQAccountPlugin(MaiBotPlugin):
     def _owner_error(self, kwargs: dict[str, Any]) -> dict[str, Any] | None:
         if self._is_owner(kwargs):
             return None
-        if not str(self.config.owner_qq or "").strip():
+        if not str(self.config.account.owner_qq or "").strip():
             return {"success": False, "error": "未配置 owner_qq，已拒绝账号修改"}
         return {"success": False, "error": "此 QQ 账号修改工具仅允许主人调用"}
 
@@ -84,6 +98,8 @@ class QQAccountPlugin(MaiBotPlugin):
     async def set_profile(
         self, nickname: str = "", personal_note: str | None = None, sex: int | None = None, **kwargs: Any
     ) -> dict[str, Any]:
+        if not self.config.plugin.enabled:
+            return {"success": False, "error": "QQ 账号工具已禁用"}
         if error := self._owner_error(kwargs):
             return error
         params: dict[str, Any] = {}
@@ -107,6 +123,8 @@ class QQAccountPlugin(MaiBotPlugin):
         parameters=[ToolParameterInfo(name="long_nick", param_type=ToolParamType.STRING, description="新的个性签名", required=True)],
     )
     async def set_signature(self, long_nick: str = "", **kwargs: Any) -> dict[str, Any]:
+        if not self.config.plugin.enabled:
+            return {"success": False, "error": "QQ 账号工具已禁用"}
         if error := self._owner_error(kwargs):
             return error
         if not isinstance(long_nick, str) or len(long_nick) > 256:
@@ -121,6 +139,8 @@ class QQAccountPlugin(MaiBotPlugin):
         parameters=[ToolParameterInfo(name="url", param_type=ToolParamType.STRING, description="HTTPS 图片直链", required=True)],
     )
     async def set_avatar(self, url: str = "", **kwargs: Any) -> dict[str, Any]:
+        if not self.config.plugin.enabled:
+            return {"success": False, "error": "QQ 账号工具已禁用"}
         if error := self._owner_error(kwargs):
             return error
         normalized = str(url or "").strip()
@@ -136,6 +156,8 @@ class QQAccountPlugin(MaiBotPlugin):
         parameters=[ToolParameterInfo(name="status", param_type=ToolParamType.INTEGER, description="在线状态 ID", required=True)],
     )
     async def set_online_status(self, status: int = 0, **kwargs: Any) -> dict[str, Any]:
+        if not self.config.plugin.enabled:
+            return {"success": False, "error": "QQ 账号工具已禁用"}
         if error := self._owner_error(kwargs):
             return error
         if status not in (10, 30, 50, 70):
@@ -153,6 +175,8 @@ class QQAccountPlugin(MaiBotPlugin):
         ],
     )
     async def set_qzone_block(self, target_qq: str = "", enable: bool = True, **kwargs: Any) -> dict[str, Any]:
+        if not self.config.plugin.enabled:
+            return {"success": False, "error": "QQ 账号工具已禁用"}
         if error := self._owner_error(kwargs):
             return error
         target = str(target_qq or "").strip()
