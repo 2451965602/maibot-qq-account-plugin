@@ -13,7 +13,7 @@ class PluginSectionConfig(PluginConfigBase):
     """MaiBot's mandatory versioned plugin section."""
 
     enabled: bool = Field(default=True, description="是否启用 QQ 账号工具")
-    config_version: str = Field(default="1.0.5", description="插件配置版本")
+    config_version: str = Field(default="1.0.6", description="插件配置版本")
 
 
 class AccountSettings(PluginConfigBase):
@@ -66,13 +66,19 @@ class QQAccountPlugin(MaiBotPlugin):
             return {"success": False, "error": str(response.get("message") or "OneBot 动作失败")}
         return {"success": True, "response": response}
 
-    async def _owner_error(self, stream_id: str) -> dict[str, Any] | None:
+    async def _owner_error(
+        self, stream_id: str, group_id: str, extra_args: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Only allow the configured owner's trusted private-chat stream.
 
-        ``stream_id`` is overwritten by the Core after model arguments are parsed.
-        Sender-related kwargs are deliberately never read because a model can supply
-        them itself.
+        A nonempty ``group_id`` is host-injected for group chats, including when a
+        model supplies an empty value. Sender-related kwargs are never trusted.
         """
+        if str(group_id or "").strip():
+            return {"success": False, "error": "此操作仅限已配置主人发起的 QQ 私聊"}
+        allowed_context_keys = {"chat_id", "user_id", "platform", "reasoning"}
+        if set(extra_args) - allowed_context_keys:
+            return {"success": False, "error": "此操作仅限已配置主人发起的 QQ 私聊"}
         owner_qq = str(self.config.account.owner_qq or "").strip()
         current_stream_id = str(stream_id or "").strip()
         if not owner_qq or not current_stream_id:
@@ -106,11 +112,12 @@ class QQAccountPlugin(MaiBotPlugin):
         ],
     )
     async def set_profile(
-        self, nickname: str = "", personal_note: str | None = None, sex: int | None = None, stream_id: str = "", **kwargs: Any
+        self, nickname: str = "", personal_note: str | None = None, sex: int | None = None,
+        stream_id: str = "", group_id: str = "", **kwargs: Any
     ) -> dict[str, Any]:
         if not self.config.plugin.enabled:
             return {"success": False, "error": "QQ 账号工具已禁用"}
-        if error := await self._owner_error(stream_id):
+        if error := await self._owner_error(stream_id, group_id, kwargs):
             return error
         params: dict[str, Any] = {}
         if nickname.strip():
@@ -134,10 +141,10 @@ class QQAccountPlugin(MaiBotPlugin):
             ToolParameterInfo(name="long_nick", param_type=ToolParamType.STRING, description="新的个性签名", required=True),
         ],
     )
-    async def set_signature(self, long_nick: str = "", stream_id: str = "", **kwargs: Any) -> dict[str, Any]:
+    async def set_signature(self, long_nick: str = "", stream_id: str = "", group_id: str = "", **kwargs: Any) -> dict[str, Any]:
         if not self.config.plugin.enabled:
             return {"success": False, "error": "QQ 账号工具已禁用"}
-        if error := await self._owner_error(stream_id):
+        if error := await self._owner_error(stream_id, group_id, kwargs):
             return error
         if not isinstance(long_nick, str) or len(long_nick) > 256:
             return {"success": False, "error": "个性签名必须是最多 256 个字符的字符串"}
@@ -152,10 +159,10 @@ class QQAccountPlugin(MaiBotPlugin):
             ToolParameterInfo(name="url", param_type=ToolParamType.STRING, description="HTTPS 图片直链", required=True),
         ],
     )
-    async def set_avatar(self, url: str = "", stream_id: str = "", **kwargs: Any) -> dict[str, Any]:
+    async def set_avatar(self, url: str = "", stream_id: str = "", group_id: str = "", **kwargs: Any) -> dict[str, Any]:
         if not self.config.plugin.enabled:
             return {"success": False, "error": "QQ 账号工具已禁用"}
-        if error := await self._owner_error(stream_id):
+        if error := await self._owner_error(stream_id, group_id, kwargs):
             return error
         normalized = str(url or "").strip()
         if not normalized.startswith("https://") or len(normalized) > 2048:
@@ -171,10 +178,10 @@ class QQAccountPlugin(MaiBotPlugin):
             ToolParameterInfo(name="status", param_type=ToolParamType.INTEGER, description="在线状态 ID", required=True),
         ],
     )
-    async def set_online_status(self, status: int = 0, stream_id: str = "", **kwargs: Any) -> dict[str, Any]:
+    async def set_online_status(self, status: int = 0, stream_id: str = "", group_id: str = "", **kwargs: Any) -> dict[str, Any]:
         if not self.config.plugin.enabled:
             return {"success": False, "error": "QQ 账号工具已禁用"}
-        if error := await self._owner_error(stream_id):
+        if error := await self._owner_error(stream_id, group_id, kwargs):
             return error
         if status not in (10, 30, 50, 70):
             return {"success": False, "error": "status 只能是 10、30、50 或 70"}
@@ -190,10 +197,10 @@ class QQAccountPlugin(MaiBotPlugin):
             ToolParameterInfo(name="enable", param_type=ToolParamType.BOOLEAN, description="是否拉黑", required=False),
         ],
     )
-    async def set_qzone_block(self, target_qq: str = "", enable: bool = True, stream_id: str = "", **kwargs: Any) -> dict[str, Any]:
+    async def set_qzone_block(self, target_qq: str = "", enable: bool = True, stream_id: str = "", group_id: str = "", **kwargs: Any) -> dict[str, Any]:
         if not self.config.plugin.enabled:
             return {"success": False, "error": "QQ 账号工具已禁用"}
-        if error := await self._owner_error(stream_id):
+        if error := await self._owner_error(stream_id, group_id, kwargs):
             return error
         target = str(target_qq or "").strip()
         if not target.isdecimal() or not 5 <= len(target) <= 12:
